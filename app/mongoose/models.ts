@@ -8,7 +8,6 @@ const UserSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
-export const UserModel =mongoose.models.User|| mongoose.model("User", UserSchema);
 
 
 
@@ -55,4 +54,8 @@ const ProfileSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
-export const Profile =  mongoose.models.Profile || mongoose.model("Profile", ProfileSchema);
+
+
+export const UserModel = mongoose.models.User|| mongoose.model("User", UserSchema);
+
+export const Profile = mongoose.models.Profile || mongoose.model("Profile", ProfileSchema);
