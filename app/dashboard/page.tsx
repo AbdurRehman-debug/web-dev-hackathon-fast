@@ -113,7 +113,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Stats Card */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <Link href='/analytics' className="hover:shadow-lg bg-white rounded-lg shadow p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
                 <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,10 +125,16 @@ export default function DashboardPage() {
             <p className="text-gray-600 text-sm">Track your application progress</p>
             <div className="mt-4">
               <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                Coming Soon
+                View your resume analysis
               </span>
             </div>
-          </div>
+            <div className="mt-4 text-indigo-600 text-sm font-medium flex items-center gap-1">
+                View Profile 
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+          </Link>
 
           {/* Interview Prep Card */}
           <div className="bg-white rounded-lg shadow p-6">
