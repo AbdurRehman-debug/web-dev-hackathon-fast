@@ -1,7 +1,8 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import connectDB from '@/app/mongoose/index';
-import {Profile,UserModel} from "@/app/mongoose/models"
+import { Profile } from '@/app/mongoose/models';
 
 export async function GET(req: NextRequest) {
   try {
@@ -44,5 +45,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-
-// ==============
