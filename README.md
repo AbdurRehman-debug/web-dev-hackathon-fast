@@ -51,6 +51,7 @@ An AI-powered job matching platform that helps users find the perfect job opport
 ### Backend
 - **Next.js API Routes** - Server-side API endpoints
 - **MongoDB with Mongoose** - Database for user profiles and data storage
+- **Drizzle ORM** - TypeScript ORM for PostgreSQL (configured for additional database support)
 - **Clerk** - Authentication and user management
 
 ### AI & Data Processing
