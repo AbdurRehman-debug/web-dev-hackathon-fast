@@ -58,4 +58,4 @@ const ProfileSchema = new mongoose.Schema({
 
 export const UserModel = mongoose.models.User|| mongoose.model("User", UserSchema);
 
-export const Profile = mongoose.models.Profile || mongoose.model("Profile", ProfileSchema);
+export const Profile = mongoose.models.Profile || mongoose.model("Profile", ProfileSchema)

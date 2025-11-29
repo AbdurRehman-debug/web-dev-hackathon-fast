@@ -5,8 +5,7 @@ import { existsSync } from 'fs';
 import path from 'path';
 import pdf from 'pdf-parse';
 import connectDB from '@/app/mongoose/index';
-import {Profile,UserModel} from "@/app/mongoose/models"
-import { UserProfile } from '@clerk/nextjs';
+import { Profile, UserModel } from "@/app/mongoose/models";
 import { parseResumeText } from '@/lib/resume-parser';
 
 export async function POST(req: NextRequest) {
@@ -28,6 +27,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Only PDF files are allowed' }, { status: 400 });
     }
 
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: 'File size must be less than 5MB' }, { status: 400 });
+    }
+
     // Create uploads directory if it doesn't exist
     const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'resumes');
     if (!existsSync(uploadsDir)) {
@@ -38,17 +42,48 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     
-    const fileName = `${userId}_${Date.now()}_${file.name}`;
+    const fileName = `${userId}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
     const filePath = path.join(uploadsDir, fileName);
     
     await writeFile(filePath, buffer);
 
-    // Parse PDF
-    const pdfData = await pdf(buffer);
-    const extractedText = pdfData.text;
+    // Parse PDF with better error handling
+    let extractedText = '';
+    let parsedData;
+    
+    try {
+      const pdfData = await pdf(buffer, {
+        // More lenient PDF parsing options
+        max: 0, // Parse all pages
+        version: 'v1.10.100'
+      });
+      extractedText = pdfData.text;
 
-    // Extract information from text
-    const parsedData = parseResumeText(extractedText);
+      if (!extractedText || extractedText.trim().length < 50) {
+        throw new Error('PDF appears to be empty or corrupted');
+      }
+
+      // Extract information from text
+      parsedData = parseResumeText(extractedText);
+
+    } catch (pdfError: any) {
+      console.error('PDF parsing error:', pdfError);
+      
+      // If PDF parsing fails, still save the file but with minimal data
+      return NextResponse.json({
+        error: 'Could not parse PDF content. The file may be corrupted or password-protected.',
+        details: pdfError.message,
+        suggestion: 'Please try re-saving your PDF or using a different PDF viewer to export it.'
+      }, { status: 400 });
+    }
+
+    // Validate parsed data
+    if (!parsedData.skills.length && !parsedData.experience.length) {
+      return NextResponse.json({
+        error: 'Could not extract meaningful information from the resume',
+        suggestion: 'Please ensure your resume contains clear sections for Skills, Experience, Education, and Projects.'
+      }, { status: 400 });
+    }
 
     // Connect to MongoDB
     await connectDB();
@@ -97,11 +132,20 @@ export async function POST(req: NextRequest) {
       profileId: profile._id
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Upload error:', error);
     return NextResponse.json(
-      { error: 'Failed to upload and parse resume' },
+      { 
+        error: 'Failed to upload and parse resume',
+        details: error.message 
+      },
       { status: 500 }
     );
   }
 }
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
