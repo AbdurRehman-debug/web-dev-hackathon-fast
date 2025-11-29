@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -48,6 +49,9 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -68,6 +72,62 @@ export default function ProfilePage() {
       console.error('Error fetching profile:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      setError('Please upload a PDF file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File size must be less than 5MB');
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(30);
+    setError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('resume', file);
+
+      setUploadProgress(60);
+
+      const response = await fetch('/api/upload-resume', {
+        method: 'POST',
+        body: formData,
+      });
+
+      setUploadProgress(90);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const data = await response.json();
+      setUploadProgress(100);
+
+      // Refresh profile data
+      await fetchProfile();
+      
+      // Close modal and show success
+      setTimeout(() => {
+        setShowUploadModal(false);
+        setUploadProgress(0);
+      }, 1000);
+
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload resume');
+      setUploadProgress(0);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -116,18 +176,115 @@ export default function ProfilePage() {
             Back to Dashboard
           </Link>
           
-          <div className="flex items-center gap-4">
-            <div className="w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center text-white text-3xl font-bold">
-              {user?.firstName?.[0]}{user?.lastName?.[0]}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center text-white text-3xl font-bold">
+                {user?.firstName?.[0]}{user?.lastName?.[0]}
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  {user?.firstName} {user?.lastName}
+                </h1>
+                <p className="text-gray-600">{user?.emailAddresses[0]?.emailAddress}</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                {user?.firstName} {user?.lastName}
-              </h1>
-              <p className="text-gray-600">{user?.emailAddresses[0]?.emailAddress}</p>
-            </div>
+            
+            {/* Upload New Resume Button */}
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Update Resume
+            </button>
           </div>
         </div>
+
+        {/* Upload Modal */}
+        {showUploadModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-gray-900">Upload New Resume</h2>
+                <button
+                  onClick={() => {
+                    setShowUploadModal(false);
+                    setError('');
+                    setUploadProgress(0);
+                  }}
+                  disabled={uploading}
+                  className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <p className="text-gray-600 text-sm mb-4">
+                  Uploading a new resume will replace your current profile data with newly parsed information.
+                </p>
+
+                <label
+                  htmlFor="resume-upload-modal"
+                  className={`block border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                    uploading
+                      ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+                      : 'border-indigo-300 hover:border-indigo-500 hover:bg-indigo-50'
+                  }`}
+                >
+                  <input
+                    type="file"
+                    id="resume-upload-modal"
+                    accept=".pdf"
+                    onChange={handleResumeUpload}
+                    disabled={uploading}
+                    className="hidden"
+                  />
+                  <svg className="w-12 h-12 text-indigo-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <p className="text-sm font-medium text-gray-700">
+                    {uploading ? 'Uploading...' : 'Click to select PDF'}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Max 5MB</p>
+                </label>
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
+                  {error}
+                </div>
+              )}
+
+              {/* Progress Bar */}
+              {uploading && (
+                <div className="mb-4">
+                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div
+                      className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-sm text-gray-600 text-center mt-2">
+                    Processing your resume...
+                  </p>
+                </div>
+              )}
+
+              {/* Info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-xs text-blue-800">
+                  <strong>Note:</strong> This will update your skills, experience, education, and projects based on the new resume.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Skills Section */}
         {profile.skills.length > 0 && (
@@ -178,7 +335,7 @@ export default function ProfilePage() {
         )}
 
         {/* Education Section */}
-        {profile.education.length > 0 && (
+        {profile.education && profile.education.length > 0 ? (
           <div className="bg-white rounded-lg shadow mb-6 p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
               <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -201,6 +358,16 @@ export default function ProfilePage() {
                 </div>
               ))}
             </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow mb-6 p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
+              </svg>
+              Education
+            </h2>
+            <p className="text-gray-500 text-sm">No education information was extracted from your resume. You can update your profile manually.</p>
           </div>
         )}
 
